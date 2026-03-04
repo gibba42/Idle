@@ -1,1 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Planner</title>
+  <style>
+    :root {
+      --c1: #10002b;
+      --c2: #240046;
+      --c3: #3c096c;
+      --c4: #5a189a;
+      --c5: #7b2cbf;
+      --c6: #9d4edd;
+      --c7: #c77dff;
+      --c8: #e0aaff;
+    }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--c8);
+      background: linear-gradient(140deg, var(--c1), var(--c3) 40%, var(--c4));
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem 3rem;
+    }
+
+    .app {
+      width: min(900px, 100%);
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: rgba(16, 0, 43, 0.72);
+      border: 1px solid rgba(224, 170, 255, 0.2);
+      border-radius: 18px;
+      padding: 1.5rem;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    h1, h2 {
+      margin: 0 0 1rem;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 3vw, 2rem);
+      color: white;
+    }
+
+    .timer-layout {
+      display: grid;
+      gap: 1.25rem;
+      justify-items: center;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .badge {
+      padding: 0.4rem 0.8rem;
+      border-radius: 999px;
+      background: var(--c3);
+      border: 1px solid var(--c6);
+      font-weight: 600;
+    }
+
+    .timer-wrap {
+      position: relative;
+      width: 240px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .timer-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .timer-bg,
+    .timer-progress {
+      fill: none;
+      stroke-width: 12;
+      cx: 50;
+      cy: 50;
+      r: 44;
+    }
+
+    .timer-bg {
+      stroke: rgba(224, 170, 255, 0.18);
+    }
+
+    .timer-progress {
+      stroke: var(--c7);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.8s linear;
+    }
+
+    .time-readout {
+      position: absolute;
+      text-align: center;
+    }
+
+    .time-readout span {
+      display: block;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.04em;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: white;
+      background: var(--c5);
+      min-width: 86px;
+    }
+
+    button:hover {
+      filter: brightness(1.08);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .secondary {
+      background: var(--c3);
+    }
+
+    .task-controls {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .task-controls input {
+      flex: 1;
+      min-width: 220px;
+      border-radius: 10px;
+      border: 1px solid var(--c6);
+      background: rgba(224, 170, 255, 0.12);
+      color: white;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.95rem;
+    }
+
+    .task-controls input::placeholder {
+      color: rgba(224, 170, 255, 0.75);
+    }
+
+    .task-list {
+      list-style: none;
+      margin: 1rem 0 0;
+      padding: 0;
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(36, 0, 70, 0.8);
+      border: 1px solid rgba(199, 125, 255, 0.5);
+      border-radius: 10px;
+      padding: 0.6rem;
+    }
+
+    .task-item.dragging {
+      opacity: 0.45;
+    }
+
+    .drag-handle {
+      background: transparent;
+      border: 1px dashed var(--c7);
+      color: var(--c7);
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      font-size: 1rem;
+      cursor: grab;
+    }
+
+    .task-item input[type="checkbox"] {
+      accent-color: var(--c7);
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .task-text {
+      flex: 1;
+      color: var(--c8);
+      overflow-wrap: anywhere;
+    }
+
+    .task-item.completed .task-text {
+      text-decoration: line-through;
+      color: rgba(224, 170, 255, 0.65);
+    }
+
+    .delete-btn {
+      background: var(--c6);
+      color: #10002b;
+      min-width: 40px;
+      padding: 0.45rem 0.6rem;
+      font-weight: 900;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel">
+      <h1>Pomodoro Timer</h1>
+      <div class="timer-layout">
+        <div class="status-row">
+          <div id="modeBadge" class="badge">Work Session</div>
+          <div id="cycleBadge" class="badge">Pomodoro 1 / 4</div>
+        </div>
+
+        <div class="timer-wrap" aria-live="polite">
+          <svg class="timer-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="timer-bg" />
+            <circle id="progressCircle" class="timer-progress" />
+          </svg>
+          <div class="time-readout">
+            <span id="timeDisplay">25:00</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="startPauseBtn" type="button">Start</button>
+          <button id="resetBtn" class="secondary" type="button">Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Task List</h2>
+      <div class="task-controls">
+        <input id="taskInput" type="text" placeholder="Add a task for this session" maxlength="120" />
+        <button id="addTaskBtn" type="button">Add Task</button>
+      </div>
+      <ul id="taskList" class="task-list"></ul>
+    </section>
+  </main>
+
+  <script>
+    const DURATIONS = {
+      work: 25 * 60,
+      shortBreak: 5 * 60,
+      longBreak: 15 * 60
+    };
+
+    const modeBadge = document.getElementById('modeBadge');
+    const cycleBadge = document.getElementById('cycleBadge');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const startPauseBtn = document.getElementById('startPauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const progressCircle = document.getElementById('progressCircle');
+
+    const taskInput = document.getElementById('taskInput');
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    const taskList = document.getElementById('taskList');
+
+    const circleCircumference = 2 * Math.PI * 44;
+    progressCircle.style.strokeDasharray = circleCircumference;
+
+    let timer = {
+      mode: 'work',
+      sessionCount: 0,
+      remainingSeconds: DURATIONS.work,
+      periodLength: DURATIONS.work,
+      running: false,
+      intervalId: null
+    };
+
+    function formatTime(totalSeconds) {
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    }
+
+    function getModeLabel() {
+      if (timer.mode === 'work') return 'Work Session';
+      if (timer.mode === 'shortBreak') return 'Short Break';
+      return 'Long Break';
+    }
+
+    function updateView() {
+      timeDisplay.textContent = formatTime(timer.remainingSeconds);
+      modeBadge.textContent = getModeLabel();
+      cycleBadge.textContent = `Pomodoro ${Math.min(timer.sessionCount + 1, 4)} / 4`;
+
+      const elapsed = timer.periodLength - timer.remainingSeconds;
+      const progressRatio = Math.min(Math.max(elapsed / timer.periodLength, 0), 1);
+      progressCircle.style.strokeDashoffset = circleCircumference * (1 - progressRatio);
+
+      if (timer.mode === 'work') {
+        progressCircle.style.stroke = 'var(--c7)';
+      } else if (timer.mode === 'shortBreak') {
+        progressCircle.style.stroke = 'var(--c6)';
+      } else {
+        progressCircle.style.stroke = 'var(--c8)';
+      }
+
+      startPauseBtn.textContent = timer.running ? 'Pause' : 'Start';
+    }
+
+    function switchPeriod() {
+      if (timer.mode === 'work') {
+        timer.sessionCount += 1;
+        if (timer.sessionCount % 4 === 0) {
+          timer.mode = 'longBreak';
+          timer.periodLength = DURATIONS.longBreak;
+        } else {
+          timer.mode = 'shortBreak';
+          timer.periodLength = DURATIONS.shortBreak;
+        }
+      } else {
+        if (timer.mode === 'longBreak') {
+          timer.sessionCount = 0;
+        }
+        timer.mode = 'work';
+        timer.periodLength = DURATIONS.work;
+      }
+      timer.remainingSeconds = timer.periodLength;
+    }
+
+    function tick() {
+      if (timer.remainingSeconds > 0) {
+        timer.remainingSeconds -= 1;
+      } else {
+        switchPeriod();
+      }
+      updateView();
+    }
+
+    function startTimer() {
+      if (timer.running) return;
+      timer.running = true;
+      timer.intervalId = setInterval(tick, 1000);
+      updateView();
+    }
+
+    function pauseTimer() {
+      timer.running = false;
+      clearInterval(timer.intervalId);
+      timer.intervalId = null;
+      updateView();
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      timer.mode = 'work';
+      timer.sessionCount = 0;
+      timer.periodLength = DURATIONS.work;
+      timer.remainingSeconds = DURATIONS.work;
+      updateView();
+    }
+
+    startPauseBtn.addEventListener('click', () => {
+      if (timer.running) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    });
+
+    resetBtn.addEventListener('click', resetTimer);
+
+    function createTaskElement(text) {
+      const item = document.createElement('li');
+      item.className = 'task-item';
+      item.draggable = true;
+
+      const dragHandle = document.createElement('button');
+      dragHandle.className = 'drag-handle';
+      dragHandle.type = 'button';
+      dragHandle.textContent = '☰';
+      dragHandle.setAttribute('aria-label', 'Drag task');
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+
+      const label = document.createElement('span');
+      label.className = 'task-text';
+      label.textContent = text;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '✕';
+      deleteBtn.setAttribute('aria-label', 'Remove task');
+
+      checkbox.addEventListener('change', () => {
+        item.classList.toggle('completed', checkbox.checked);
+      });
+
+      deleteBtn.addEventListener('click', () => {
+        item.remove();
+      });
+
+      item.addEventListener('dragstart', () => {
+        item.classList.add('dragging');
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+      });
+
+      item.append(dragHandle, checkbox, label, deleteBtn);
+      return item;
+    }
+
+    function addTask() {
+      const taskText = taskInput.value.trim();
+      if (!taskText) return;
+      taskList.appendChild(createTaskElement(taskText));
+      taskInput.value = '';
+      taskInput.focus();
+    }
+
+    taskList.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      const dragging = taskList.querySelector('.dragging');
+      if (!dragging) return;
+
+      const siblings = [...taskList.querySelectorAll('.task-item:not(.dragging)')];
+      const nextSibling = siblings.find((sibling) => {
+        const box = sibling.getBoundingClientRect();
+        return event.clientY <= box.top + box.height / 2;
+      });
+
+      taskList.insertBefore(dragging, nextSibling || null);
+    });
+
+    addTaskBtn.addEventListener('click', addTask);
+    taskInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        addTask();
+      }
+    });
+
+    updateView();
+  </script>
+</body>
+</html>
