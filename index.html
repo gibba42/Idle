@@ -163,7 +163,7 @@
 
     .task-controls input {
       flex: 1;
-      min-width: 220px;
+      min-width: 170px;
       border-radius: 10px;
       border: 1px solid var(--c6);
       background: rgba(224, 170, 255, 0.12);
@@ -176,9 +176,28 @@
       color: rgba(224, 170, 255, 0.75);
     }
 
+    .project-groups {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .project-group {
+      background: rgba(36, 0, 70, 0.5);
+      border: 1px solid rgba(199, 125, 255, 0.35);
+      border-radius: 12px;
+      padding: 0.8rem;
+    }
+
+    .project-title {
+      margin: 0;
+      font-size: 1rem;
+      color: white;
+    }
+
     .task-list {
       list-style: none;
-      margin: 1rem 0 0;
+      margin: 0.7rem 0 0;
       padding: 0;
       display: grid;
       gap: 0.6rem;
@@ -283,10 +302,11 @@
     <section class="panel">
       <h2>Task List</h2>
       <div class="task-controls">
+        <input id="projectInput" type="text" placeholder="Project (defaults to General)" maxlength="60" />
         <input id="taskInput" type="text" placeholder="Add a task for this session" maxlength="120" />
         <button id="addTaskBtn" type="button">Add Task</button>
       </div>
-      <ul id="taskList" class="task-list"></ul>
+      <div id="projectGroups" class="project-groups"></div>
     </section>
   </main>
 
@@ -304,9 +324,10 @@
     const resetBtn = document.getElementById('resetBtn');
     const progressCircle = document.getElementById('progressCircle');
 
+    const projectInput = document.getElementById('projectInput');
     const taskInput = document.getElementById('taskInput');
     const addTaskBtn = document.getElementById('addTaskBtn');
-    const taskList = document.getElementById('taskList');
+    const projectGroups = document.getElementById('projectGroups');
 
     const circleCircumference = 2 * Math.PI * 44;
     progressCircle.style.strokeDasharray = circleCircumference;
@@ -443,7 +464,11 @@
       });
 
       deleteBtn.addEventListener('click', () => {
+        const projectGroup = item.closest('.project-group');
         item.remove();
+        if (projectGroup && projectGroup.querySelectorAll('.task-item').length === 0) {
+          projectGroup.remove();
+        }
       });
 
       item.addEventListener('dragstart', () => {
@@ -458,15 +483,11 @@
       return item;
     }
 
-    function addTask() {
-      const taskText = taskInput.value.trim();
-      if (!taskText) return;
-      taskList.appendChild(createTaskElement(taskText));
-      taskInput.value = '';
-      taskInput.focus();
+    function toProjectKey(projectName) {
+      return projectName.trim().toLowerCase();
     }
 
-    taskList.addEventListener('dragover', (event) => {
+    function handleTaskListDragOver(event, taskList) {
       event.preventDefault();
       const dragging = taskList.querySelector('.dragging');
       if (!dragging) return;
@@ -478,7 +499,51 @@
       });
 
       taskList.insertBefore(dragging, nextSibling || null);
-    });
+    }
+
+    function createProjectGroup(projectName) {
+      const wrapper = document.createElement('section');
+      wrapper.className = 'project-group';
+      wrapper.dataset.projectKey = toProjectKey(projectName);
+
+      const title = document.createElement('h3');
+      title.className = 'project-title';
+      title.textContent = projectName;
+
+      const list = document.createElement('ul');
+      list.className = 'task-list';
+
+      list.addEventListener('dragover', (event) => {
+        handleTaskListDragOver(event, list);
+      });
+
+      wrapper.append(title, list);
+      projectGroups.appendChild(wrapper);
+      return list;
+    }
+
+    function getOrCreateProjectList(projectName) {
+      const projectKey = toProjectKey(projectName);
+      const existingGroup = [...projectGroups.querySelectorAll('.project-group')].find((group) => {
+        return group.dataset.projectKey === projectKey;
+      });
+      if (existingGroup) {
+        return existingGroup.querySelector('.task-list');
+      }
+      return createProjectGroup(projectName);
+    }
+
+    function addTask() {
+      const taskText = taskInput.value.trim();
+      if (!taskText) return;
+
+      const projectName = projectInput.value.trim() || 'General';
+      const projectList = getOrCreateProjectList(projectName);
+      projectList.appendChild(createTaskElement(taskText));
+
+      taskInput.value = '';
+      taskInput.focus();
+    }
 
     addTaskBtn.addEventListener('click', addTask);
     taskInput.addEventListener('keydown', (event) => {
